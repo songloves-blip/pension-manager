@@ -240,33 +240,32 @@ var appData = {
 var priceCache = {};
 var db=null, currentPerson='h', currentSimPerson='h', modalTargetKey='';
 
-// ── Claude API로 ETF 현재가 조회 ──
+// ── ETF 현재가 조회 (프록시 순차 시도) ──
+const PROXIES = [
+  code => `https://corsproxy.io/?url=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${code}.KS?interval=1d&range=1d`)}`,
+  code => `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${code}.KS?interval=1d&range=1d`)}`,
+  code => `https://thingproxy.freeboard.io/fetch/https://query1.finance.yahoo.com/v8/finance/chart/${code}.KS?interval=1d&range=1d`,
+];
+
+async function fetchSinglePrice(code) {
+  for (const proxyFn of PROXIES) {
+    try {
+      const res = await fetch(proxyFn(code), { signal: AbortSignal.timeout(6000) });
+      const data = await res.json();
+      const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
+      if (price) return price;
+    } catch(e) { continue; }
+  }
+  return null;
+}
+
 async function fetchPricesViaClaude(codes) {
   const missing = codes.filter(c => !priceCache[c]);
   if (!missing.length) return;
-  try {
-    const prompt = `다음 한국 ETF 종목코드들의 오늘 기준 현재가(원)를 JSON으로만 답해줘. 설명 없이 JSON만.
-코드 목록: ${missing.join(', ')}
-형식: {"069500":85000,"102110":28000}`;
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        model:'claude-sonnet-4-6',
-        max_tokens:500,
-        tools:[{type:'web_search_20250305',name:'web_search'}],
-        messages:[{role:'user',content:prompt}]
-      })
-    });
-    const data = await res.json();
-    // 텍스트 블록에서 JSON 추출
-    const textBlock = data.content.find(b => b.type==='text');
-    if (textBlock) {
-      const jsonStr = textBlock.text.replace(/```json|```/g,'').trim();
-      const parsed = JSON.parse(jsonStr);
-      Object.assign(priceCache, parsed);
-    }
-  } catch(e) { console.warn('가격 조회 실패', e); }
+  await Promise.all(missing.map(async code => {
+    const price = await fetchSinglePrice(code);
+    if (price) priceCache[code] = price;
+  }));
 }
 
 async function refreshAllPrices() {
