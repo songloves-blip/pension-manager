@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>연금 관리</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: #f0f4f8; color: #2d3748; min-height: 100vh; }
+  nav { background: #2b4c7e; padding: 14px 20px; display: flex; gap: 10px; }
+  nav button { background: none; border: none; color: #a0b8d8; font-size: 14px; cursor: pointer; padding: 6px 14px; border-radius: 6px; transition: all .2s; }
+  nav button.active, nav button:hover { background: rgba(255,255,255,0.15); color: #fff; }
+  .page { display: none; padding: 20px; max-width: 780px; margin: 0 auto; }
+  .page.active { display: block; }
+  .total-card { background: linear-gradient(135deg, #2b4c7e, #4a90d9); color: white; border-radius: 16px; padding: 24px; margin-bottom: 16px; text-align: center; }
+  .total-card .label { font-size: 13px; opacity: .8; margin-bottom: 6px; }
+  .total-card .amount { font-size: 38px; font-weight: 700; letter-spacing: -1px; }
+  .person-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .person-card { border-radius: 14px; padding: 18px; color: white; }
+  .person-card.husband { background: linear-gradient(135deg, #3a5f9e, #5b8fd4); }
+  .person-card.wife { background: linear-gradient(135deg, #7c3a6e, #c06aae); }
+  .person-card .p-name { font-size: 12px; opacity: .85; margin-bottom: 4px; }
+  .person-card .p-amount { font-size: 24px; font-weight: 700; }
+  .person-card .p-pct { font-size: 11px; opacity: .7; margin-top: 4px; }
+  .account-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .acc-card { background: white; border-radius: 12px; padding: 14px; box-shadow: 0 1px 4px rgba(0,0,0,.06); border-left: 4px solid #ccc; }
+  .acc-card.husband { border-left-color: #4a90d9; }
+  .acc-card.wife { border-left-color: #c06aae; }
+  .acc-card .acc-name { font-size: 11px; color: #718096; margin-bottom: 4px; }
+  .acc-card .acc-amount { font-size: 17px; font-weight: 700; color: #2d3748; }
+  .acc-card .acc-pct { font-size: 11px; color: #a0aec0; margin-top: 3px; }
+  .badge { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 8px; margin-left: 4px; }
+  .badge-direct { background: #ebf4ff; color: #2b6cb0; }
+  .badge-etf { background: #f0fff4; color: #276749; }
+  .section-title { font-size: 14px; font-weight: 700; margin: 18px 0 10px; color: #4a5568; display: flex; align-items: center; gap: 8px; }
+  .refresh-btn { font-size: 11px; color: #4a90d9; background: none; border: none; cursor: pointer; }
+  .person-tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+  .person-tabs button { flex: 1; padding: 10px; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all .2s; background: #e2e8f0; color: #718096; }
+  .person-tabs button.active-h { background: #3a5f9e; color: white; }
+  .person-tabs button.active-w { background: #9e3a8a; color: white; }
+  .input-group { background: white; border-radius: 12px; padding: 16px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+  .input-group h3 { font-size: 13px; font-weight: 700; margin-bottom: 10px; color: #2b4c7e; }
+  .field { margin-bottom: 8px; }
+  .field label { font-size: 11px; color: #718096; display: block; margin-bottom: 3px; }
+  .field input { width: 100%; border: 1px solid #e2e8f0; border-radius: 8px; padding: 7px 10px; font-size: 13px; outline: none; transition: border .2s; }
+  .field input:focus { border-color: #4a90d9; }
+  .btn { color: white; border: none; border-radius: 8px; padding: 10px 20px; font-size: 14px; cursor: pointer; width: 100%; margin-top: 8px; }
+  .btn-h { background: #2b4c7e; } .btn-h:hover { background: #3a6398; }
+  .btn-w { background: #9e3a8a; } .btn-w:hover { background: #b54a9e; }
+  .btn-sm { width: auto; padding: 5px 12px; font-size: 12px; margin-top: 0; background: #4a90d9; border: none; border-radius: 8px; color: white; cursor: pointer; }
+  .etf-row { background: #f8fafc; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+  .etf-row-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .etf-name-display { font-size: 13px; font-weight: 600; color: #2d3748; }
+  .etf-code-display { font-size: 11px; color: #a0aec0; }
+  .etf-row-bottom { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; align-items: end; }
+  .etf-row-bottom label { font-size: 11px; color: #a0aec0; display: block; margin-bottom: 3px; }
+  .etf-row-bottom input { width: 100%; border: 1px solid #e2e8f0; border-radius: 6px; padding: 5px 8px; font-size: 13px; outline: none; }
+  .etf-row-bottom input:focus { border-color: #4a90d9; }
+  .etf-eval { font-size: 13px; color: #48bb78; font-weight: 700; padding-top: 4px; }
+  .etf-price-val { font-size: 13px; color: #4a90d9; font-weight: 600; padding-top: 4px; }
+  .etf-del { background: none; border: none; color: #fc8181; cursor: pointer; font-size: 16px; }
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 100; display: flex; align-items: center; justify-content: center; }
+  .modal { background: white; border-radius: 16px; width: 90%; max-width: 440px; padding: 20px; box-shadow: 0 8px 32px rgba(0,0,0,.2); }
+  .modal h3 { font-size: 15px; font-weight: 700; margin-bottom: 12px; color: #2b4c7e; }
+  .modal-close { float: right; background: none; border: none; font-size: 18px; cursor: pointer; color: #a0aec0; margin-top: -4px; }
+  .search-input-wrap { position: relative; margin-bottom: 10px; }
+  .search-input-wrap input { width: 100%; border: 2px solid #4a90d9; border-radius: 10px; padding: 9px 38px 9px 12px; font-size: 14px; outline: none; }
+  .search-icon { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); }
+  .search-results { max-height: 300px; overflow-y: auto; }
+  .search-item { padding: 10px 12px; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: background .15s; }
+  .search-item:hover { background: #ebf4ff; }
+  .search-item .s-name { font-size: 13px; font-weight: 600; color: #2d3748; }
+  .search-item .s-code { font-size: 11px; color: #a0aec0; margin-top: 2px; }
+  .search-empty { text-align: center; color: #a0aec0; font-size: 13px; padding: 20px; }
+  .sim-tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+  .sim-tabs button { flex: 1; padding: 8px; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; background: #e2e8f0; color: #718096; }
+  .sim-tabs button.active-h { background: #3a5f9e; color: white; }
+  .sim-tabs button.active-w { background: #9e3a8a; color: white; }
+  .sim-card { background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 4px rgba(0,0,0,.06); margin-bottom: 12px; }
+  .sim-result { border-radius: 12px; padding: 20px; text-align: center; color: white; }
+  .sim-result.husband { background: linear-gradient(135deg, #3a5f9e, #5b8fd4); }
+  .sim-result.wife { background: linear-gradient(135deg, #7c3a6e, #c06aae); }
+  .sim-result .r-label { font-size: 13px; opacity: .85; margin-bottom: 6px; }
+  .sim-result .r-amount { font-size: 30px; font-weight: 700; }
+  .sim-detail { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-top: 14px; }
+  .sim-detail-item { background: rgba(255,255,255,.15); border-radius: 8px; padding: 9px; text-align: center; }
+  .sim-detail-item .d-label { font-size: 10px; opacity: .8; margin-bottom: 3px; }
+  .sim-detail-item .d-val { font-size: 13px; font-weight: 700; }
+  .price-loading { color: #a0aec0; font-size: 12px; }
+  .firebase-notice { background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #856404; margin-bottom: 12px; }
+  .firebase-notice input { border: 1px solid #ffc107; border-radius: 6px; padding: 4px 8px; font-size: 12px; margin: 3px 0; width: 100%; outline: none; }
+  .firebase-notice button { background: #ffc107; border: none; border-radius: 6px; padding: 5px 12px; font-size: 12px; cursor: pointer; margin-top: 4px; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<nav>
+  <button class="active" onclick="showPage('dashboard',this)">📊 대시보드</button>
+  <button onclick="showPage('accounts',this)">💼 계좌 관리</button>
+  <button onclick="showPage('simulator',this)">🔮 예상 연금</button>
+</nav>
+
+<!-- 검색 모달 -->
+<div class="modal-bg" id="search-modal" style="display:none;">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <h3>🔍 ETF 종목 검색</h3>
+    <div class="search-input-wrap">
+      <input type="text" id="search-input" placeholder="종목명 입력 (예: TIGER, 미국, 2차전지)" oninput="searchETF(this.value)">
+      <span class="search-icon">🔍</span>
+    </div>
+    <div class="search-results" id="search-results">
+      <div class="search-empty">종목명을 입력하세요</div>
+    </div>
+  </div>
+</div>
+
+<!-- 대시보드 -->
+<div class="page active" id="page-dashboard">
+  <div class="total-card">
+    <div class="label">가족 총 연금 자산</div>
+    <div class="amount" id="total-amount">₩0</div>
+  </div>
+  <div class="person-row">
+    <div class="person-card husband"><div class="p-name">👨 동현</div><div class="p-amount" id="dash-h-total">₩0</div><div class="p-pct" id="dash-h-pct">-</div></div>
+    <div class="person-card wife"><div class="p-name">👩 아내</div><div class="p-amount" id="dash-w-total">₩0</div><div class="p-pct" id="dash-w-pct">-</div></div>
+  </div>
+  <div class="section-title">계좌별 현황 <button class="refresh-btn" onclick="refreshAllPrices()">🔄 가격 새로고침</button></div>
+  <div class="account-grid" id="account-grid"></div>
+</div>
+
+<!-- 계좌 관리 -->
+<div class="page" id="page-accounts">
+  <div id="firebase-setup" class="firebase-notice" style="display:none;">
+    ⚠️ Firebase 미연결 — 설정값을 입력하면 저장됩니다.<br>
+    <input type="text" id="fb-key" placeholder="apiKey"><br>
+    <input type="text" id="fb-domain" placeholder="authDomain"><br>
+    <input type="text" id="fb-project" placeholder="projectId"><br>
+    <button onclick="connectFirebase()">연결</button>
+  </div>
+  <div class="person-tabs">
+    <button class="active-h" id="tab-h" onclick="switchPerson('h')">👨 동현</button>
+    <button id="tab-w" onclick="switchPerson('w')">👩 아내</button>
+  </div>
+
+  <div id="form-h">
+    <div class="section-title">직접 입력 계좌</div>
+    <div class="input-group"><h3>🏛️ 국민연금</h3><div class="field"><label>현재 납입 누계액 (원)</label><input type="number" id="h-nps" placeholder="예: 15000000"></div></div>
+    <div class="input-group"><h3>🏢 퇴직연금</h3><div class="field"><label>현재 적립액 (원)</label><input type="number" id="h-retire" placeholder="예: 20000000"></div></div>
+    <div class="input-group"><h3>🛡️ 보험사연금</h3><div class="field"><label>현재 적립액 (원)</label><input type="number" id="h-insure" placeholder="예: 10000000"></div></div>
+    <div class="section-title">ETF 계좌</div>
+    <div class="input-group"><h3>📈 연금저축계좌 <span style="font-size:12px;color:#48bb78;" id="h-pension-total"></span></h3><div id="etf-list-h-pension"></div><button class="btn-sm" onclick="openModal('h-pension')">+ ETF 추가</button></div>
+    <div class="input-group"><h3>📈 IRP <span style="font-size:12px;color:#48bb78;" id="h-irp-total"></span></h3><div id="etf-list-h-irp"></div><button class="btn-sm" onclick="openModal('h-irp')">+ ETF 추가</button></div>
+    <div class="input-group"><h3>📈 ISA <span style="font-size:12px;color:#48bb78;" id="h-isa-total"></span></h3><div id="etf-list-h-isa"></div><button class="btn-sm" onclick="openModal('h-isa')">+ ETF 추가</button></div>
+    <button class="btn btn-h" onclick="saveAll()">💾 동현 저장</button>
+  </div>
+
+  <div id="form-w" style="display:none;">
+    <div class="section-title">직접 입력 계좌</div>
+    <div class="input-group"><h3>🏛️ 국민연금</h3><div class="field"><label>현재 납입 누계액 (원)</label><input type="number" id="w-nps" placeholder="예: 10000000"></div></div>
+    <div class="input-group"><h3>🏢 퇴직연금</h3><div class="field"><label>현재 적립액 (원)</label><input type="number" id="w-retire" placeholder="예: 5000000"></div></div>
+    <div class="input-group"><h3>🛡️ 보험사연금</h3><div class="field"><label>현재 적립액 (원)</label><input type="number" id="w-insure" placeholder="예: 5000000"></div></div>
+    <div class="section-title">ETF 계좌</div>
+    <div class="input-group"><h3>📈 연금저축계좌 <span style="font-size:12px;color:#c06aae;" id="w-pension-total"></span></h3><div id="etf-list-w-pension"></div><button class="btn-sm" style="background:#b54a9e;" onclick="openModal('w-pension')">+ ETF 추가</button></div>
+    <div class="input-group"><h3>📈 IRP <span style="font-size:12px;color:#c06aae;" id="w-irp-total"></span></h3><div id="etf-list-w-irp"></div><button class="btn-sm" style="background:#b54a9e;" onclick="openModal('w-irp')">+ ETF 추가</button></div>
+    <div class="input-group"><h3>📈 ISA <span style="font-size:12px;color:#c06aae;" id="w-isa-total"></span></h3><div id="etf-list-w-isa"></div><button class="btn-sm" style="background:#b54a9e;" onclick="openModal('w-isa')">+ ETF 추가</button></div>
+    <button class="btn btn-w" onclick="saveAll()">💾 아내 저장</button>
+  </div>
+</div>
+
+<!-- 시뮬레이터 -->
+<div class="page" id="page-simulator">
+  <div class="sim-tabs">
+    <button class="active-h" id="stab-h" onclick="switchSimPerson('h')">👨 동현</button>
+    <button id="stab-w" onclick="switchSimPerson('w')">👩 아내</button>
+  </div>
+  <div id="sim-form-h">
+    <div class="sim-card">
+      <div class="field"><label>현재 나이</label><input type="number" value="42" readonly style="background:#f7fafc;"></div>
+      <div class="field"><label>목표 나이</label><input type="number" id="h-sim-target" value="60"></div>
+      <div class="field"><label>연 예상 수익률 (%)</label><input type="number" id="h-sim-rate" value="5" step="0.1"></div>
+      <button class="btn btn-h" onclick="simulate('h')">📊 시뮬레이션 실행</button>
+    </div>
+    <div class="sim-result husband" id="sim-result-h" style="display:none;">
+      <div class="r-label">👨 동현 예상 연금 자산</div><div class="r-amount" id="h-sim-total">-</div>
+      <div class="sim-detail">
+        <div class="sim-detail-item"><div class="d-label">연금저축</div><div class="d-val" id="h-sr-pension">-</div></div>
+        <div class="sim-detail-item"><div class="d-label">IRP</div><div class="d-val" id="h-sr-irp">-</div></div>
+        <div class="sim-detail-item"><div class="d-label">ISA</div><div class="d-val" id="h-sr-isa">-</div></div>
+        <div class="sim-detail-item"><div class="d-label">퇴직연금</div><div class="d-val" id="h-sr-retire">-</div></div>
+        <div class="sim-detail-item"><div class="d-label">보험사연금</div><div class="d-val" id="h-sr-insure">-</div></div>
+        <div class="sim-detail-item"><div class="d-label">국민연금</div><div class="d-val">별도입력</div></div>
+      </div>
+    </div>
+  </div>
+  <div id="sim-form-w" style="display:none;">
+    <div class="sim-card">
+      <div class="field"><label>현재 나이</label><input type="number" id="w-sim-age" value="40"></div>
+      <div class="field"><label>목표 나이</label><input type="number" id="w-sim-target" value="60"></div>
+      <div class="field"><label>연 예상 수익률 (%)</label><input type="number" id="w-sim-rate" value="5" step="0.1"></div>
+      <button class="btn btn-w" onclick="simulate('w')">📊 시뮬레이션 실행</button>
+    </div>
+    <div class="sim-result wife" id="sim-result-w" style="display:none;">
+      <div class="r-label">👩 아내 예상 연금 자산</div><div class="r-amount" id="w-sim-total">-</div>
+      <div class="sim-detail">
+        <div class="sim-detail-item"><div class="d-label">연금저축</div><div class="d-val" id="w-sr-pension">-</div></div>
+        <div class="sim-detail-item"><div class="d-label">IRP</div><div class="d-val" id="w-sr-irp">-</div></div>
+        <div class="sim-detail-item"><div class="d-label">ISA</div><div class="d-val" id="w-sr-isa">-</div></div>
+        <div class="sim-detail-item"><div class="d-label">퇴직연금</div><div class="d-val" id="w-sr-retire">-</div></div>
+        <div class="sim-detail-item"><div class="d-label">보험사연금</div><div class="d-val" id="w-sr-insure">-</div></div>
+        <div class="sim-detail-item"><div class="d-label">국민연금</div><div class="d-val">별도입력</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var ETF_LIST = [
+  {code:'069500',name:'KODEX 200'},{code:'102110',name:'TIGER 200'},
+  {code:'229200',name:'KODEX 코스닥150'},{code:'233740',name:'KODEX 코스닥150 레버리지'},
+  {code:'360750',name:'TIGER 미국S&P500'},{code:'379800',name:'KODEX 미국S&P500'},
+  {code:'411060',name:'ACE 미국S&P500'},{code:'133690',name:'TIGER 미국나스닥100'},
+  {code:'381170',name:'KODEX 미국나스닥100'},{code:'487240',name:'ACE 미국나스닥100'},
+  {code:'458730',name:'TIGER 미국배당다우존스'},{code:'448290',name:'KODEX 미국배당다우존스'},
+  {code:'091160',name:'KODEX 반도체'},{code:'266410',name:'KODEX 2차전지산업'},
+  {code:'364980',name:'TIGER 2차전지TOP10'},{code:'139220',name:'TIGER 200 IT'},
+  {code:'157490',name:'TIGER 소프트웨어'},{code:'148070',name:'KOSEF 국고채10년'},
+  {code:'114260',name:'KODEX 국고채3년'},{code:'292150',name:'TIGER 국채3년'},
+  {code:'385560',name:'TIGER 미국채10년선물'},{code:'308620',name:'KODEX 미국채울트라30년선물'},
+  {code:'441640',name:'ACE 미국30년국채액티브'},{code:'132030',name:'KODEX 골드선물'},
+  {code:'182480',name:'TIGER 부동산인프라고배당'},{code:'448540',name:'TIGER 글로벌리츠'},
+  {code:'395160',name:'TIGER 글로벌멀티에셋TDF2045'},{code:'456600',name:'KODEX TDF2050액티브'},
+  {code:'161510',name:'TIGER 우량가치'},{code:'091180',name:'KODEX 자동차'},
+];
+
+var appData = {
+  h:{nps:0,retire:0,insure:0,etf:{pension:[],irp:[],isa:[]}},
+  w:{nps:0,retire:0,insure:0,etf:{pension:[],irp:[],isa:[]}}
+};
+var priceCache = {};
+var db=null, currentPerson='h', currentSimPerson='h', modalTargetKey='';
+
+// ── Claude API로 ETF 현재가 조회 ──
+async function fetchPricesViaClaude(codes) {
+  const missing = codes.filter(c => !priceCache[c]);
+  if (!missing.length) return;
+  try {
+    const prompt = `다음 한국 ETF 종목코드들의 오늘 기준 현재가(원)를 JSON으로만 답해줘. 설명 없이 JSON만.
+코드 목록: ${missing.join(', ')}
+형식: {"069500":85000,"102110":28000}`;
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-6',
+        max_tokens:500,
+        tools:[{type:'web_search_20250305',name:'web_search'}],
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+    const data = await res.json();
+    // 텍스트 블록에서 JSON 추출
+    const textBlock = data.content.find(b => b.type==='text');
+    if (textBlock) {
+      const jsonStr = textBlock.text.replace(/```json|```/g,'').trim();
+      const parsed = JSON.parse(jsonStr);
+      Object.assign(priceCache, parsed);
+    }
+  } catch(e) { console.warn('가격 조회 실패', e); }
+}
+
+async function refreshAllPrices() {
+  const allCodes = [];
+  for (const p of ['h','w']) {
+    for (const acct of ['pension','irp','isa']) {
+      document.querySelectorAll('#etf-list-'+p+'-'+acct+' .etf-row').forEach(row => {
+        if (row.dataset.code) allCodes.push(row.dataset.code);
+      });
+    }
+  }
+  if (!allCodes.length) return;
+  // 가격 로딩 표시
+  document.querySelectorAll('.etf-price-val').forEach(el => el.textContent = '조회중...');
+  await fetchPricesViaClaude([...new Set(allCodes)]);
+  applyPricesToAllRows();
+  renderDashboard();
+}
+
+function applyPricesToAllRows() {
+  for (const p of ['h','w']) {
+    for (const acct of ['pension','irp','isa']) {
+      const key = p+'-'+acct;
+      document.querySelectorAll('#etf-list-'+key+' .etf-row').forEach(row => {
+        const code = row.dataset.code;
+        const price = priceCache[code];
+        if (price) {
+          const priceEl = row.querySelector('.etf-price-val');
+          const qtyEl = row.querySelector('.etf-qty');
+          const evalEl = row.querySelector('.etf-eval');
+          if (priceEl) priceEl.textContent = won(price)+'원';
+          if (qtyEl && evalEl) evalEl.textContent = won(price * (parseFloat(qtyEl.value)||0));
+        }
+      });
+      updateETFTotal(key);
+    }
+  }
+}
+
+// ── 모달 ──
+function openModal(key) {
+  modalTargetKey = key;
+  document.getElementById('search-modal').style.display = 'flex';
+  document.getElementById('search-input').value = '';
+  document.getElementById('search-results').innerHTML = '<div class="search-empty">종목명을 입력하세요</div>';
+  setTimeout(()=>document.getElementById('search-input').focus(),100);
+}
+function closeModal() { document.getElementById('search-modal').style.display = 'none'; }
+
+function searchETF(q) {
+  const kw = q.trim().toLowerCase();
+  const res = document.getElementById('search-results');
+  if (!kw) { res.innerHTML = '<div class="search-empty">종목명을 입력하세요</div>'; return; }
+  const filtered = ETF_LIST.filter(e => e.name.toLowerCase().includes(kw) || e.code.includes(kw));
+  if (!filtered.length) { res.innerHTML = '<div class="search-empty">검색 결과가 없습니다</div>'; return; }
+  res.innerHTML = filtered.map(e =>
+    '<div class="search-item" onclick="selectETF(\''+e.code+'\',\''+e.name.replace(/'/g,"\\'")+'\')">' +
+    '<div><div class="s-name">'+e.name+'</div><div class="s-code">'+e.code+'</div></div>' +
+    '<div style="font-size:12px;color:#4a90d9;">'+(priceCache[e.code]?won(priceCache[e.code])+'원':'')+'</div>' +
+    '</div>'
+  ).join('');
+}
+
+function selectETF(code, name) {
+  addETFRow(modalTargetKey, code, name, 0);
+  closeModal();
+  // 선택 즉시 가격 조회
+  fetchPricesViaClaude([code]).then(applyPricesToAllRows);
+}
+
+// ── ETF 행 ──
+function addETFRow(key, code, name, qty) {
+  const list = document.getElementById('etf-list-'+key);
+  const uid = Date.now()+'_'+Math.random().toString(36).slice(2);
+  const row = document.createElement('div');
+  row.className = 'etf-row';
+  row.dataset.code = code;
+  row.dataset.name = name||code;
+  const price = priceCache[code];
+  const evalAmt = price ? price*(qty||0) : 0;
+  row.innerHTML =
+    '<div class="etf-row-top">' +
+      '<div><div class="etf-name-display">'+( name||code)+'</div><div class="etf-code-display">'+code+'</div></div>' +
+      '<button class="etf-del" onclick="this.closest(\'.etf-row\').remove();updateETFTotal(\''+key+'\')">✕</button>' +
+    '</div>' +
+    '<div class="etf-row-bottom">' +
+      '<div><label>수량</label><input class="etf-qty" type="number" value="'+(qty||'')+'" placeholder="0" oninput="recalcRow(this,\''+key+'\')" ></div>' +
+      '<div><label>현재가</label><div class="etf-price-val price-loading">'+(price?won(price)+'원':'조회중...')+'</div></div>' +
+      '<div><label>평가금액</label><div class="etf-eval">'+(evalAmt?won(evalAmt):'-')+'</div></div>' +
+    '</div>';
+  list.appendChild(row);
+  updateETFTotal(key);
+}
+
+function recalcRow(input, key) {
+  const row = input.closest('.etf-row');
+  const code = row.dataset.code;
+  const price = priceCache[code]||0;
+  const qty = parseFloat(input.value)||0;
+  const evalEl = row.querySelector('.etf-eval');
+  if (evalEl) evalEl.textContent = price ? won(price*qty) : '-';
+  updateETFTotal(key);
+}
+
+function updateETFTotal(key) {
+  const rows = document.querySelectorAll('#etf-list-'+key+' .etf-row');
+  let total = 0;
+  rows.forEach(row => {
+    const code = row.dataset.code;
+    const price = priceCache[code]||0;
+    const qty = parseFloat(row.querySelector('.etf-qty')?.value)||0;
+    total += price*qty;
+  });
+  const el = document.getElementById(key+'-total');
+  if (el) el.textContent = total ? '평가액 '+won(total) : '';
+  return total;
+}
+
+function getETFTotal(key) {
+  const rows = document.querySelectorAll('#etf-list-'+key+' .etf-row');
+  let total = 0;
+  rows.forEach(row => {
+    const price = priceCache[row.dataset.code]||0;
+    const qty = parseFloat(row.querySelector('.etf-qty')?.value)||0;
+    total += price*qty;
+  });
+  return total;
+}
+
+// ── 페이지/탭 ──
+function showPage(id,btn) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  if(btn) btn.classList.add('active');
+  if(id==='dashboard') renderDashboard();
+}
+function switchPerson(p) {
+  currentPerson=p;
+  document.getElementById('form-h').style.display=p==='h'?'':'none';
+  document.getElementById('form-w').style.display=p==='w'?'':'none';
+  document.getElementById('tab-h').className=p==='h'?'active-h':'';
+  document.getElementById('tab-w').className=p==='w'?'active-w':'';
+}
+function switchSimPerson(p) {
+  currentSimPerson=p;
+  document.getElementById('sim-form-h').style.display=p==='h'?'':'none';
+  document.getElementById('sim-form-w').style.display=p==='w'?'':'none';
+  document.getElementById('stab-h').className=p==='h'?'active-h':'';
+  document.getElementById('stab-w').className=p==='w'?'active-w':'';
+}
+
+// ── 저장 ──
+async function saveAll() {
+  const p = currentPerson;
+  appData[p].nps = parseFloat(document.getElementById(p+'-nps').value)||0;
+  appData[p].retire = parseFloat(document.getElementById(p+'-retire').value)||0;
+  appData[p].insure = parseFloat(document.getElementById(p+'-insure').value)||0;
+  ['pension','irp','isa'].forEach(acct => {
+    const key=p+'-'+acct;
+    appData[p].etf[acct]=[];
+    document.querySelectorAll('#etf-list-'+key+' .etf-row').forEach(row=>{
+      const code=row.dataset.code, name=row.dataset.name;
+      const qty=parseFloat(row.querySelector('.etf-qty')?.value)||0;
+      if(code) appData[p].etf[acct].push({code,name,qty});
+    });
+  });
+  if(db) {
+    try {
+      await window._fs.setDoc(window._fs.doc(db,'pension','family'),{appData,updated:new Date().toISOString()});
+      alert('저장되었습니다!');
+    } catch(e){alert('저장 실패: '+e.message);}
+  } else {
+    // 로컬스토리지 대신 sessionStorage 임시 저장
+    try { sessionStorage.setItem('pensionData', JSON.stringify(appData)); } catch(e){}
+    alert('저장되었습니다!\n(Firebase 연결 후 영구 저장 가능)');
+  }
+  renderDashboard();
+}
+
+// ── 대시보드 ──
+function getPersonTotal(p) {
+  return (appData[p].nps||0)+(appData[p].retire||0)+(appData[p].insure||0)+
+    getETFTotal(p+'-pension')+getETFTotal(p+'-irp')+getETFTotal(p+'-isa');
+}
+function renderDashboard() {
+  const hT=getPersonTotal('h'), wT=getPersonTotal('w'), total=hT+wT;
+  document.getElementById('total-amount').textContent=won(total);
+  document.getElementById('dash-h-total').textContent=won(hT);
+  document.getElementById('dash-w-total').textContent=won(wT);
+  document.getElementById('dash-h-pct').textContent=total?(hT/total*100).toFixed(1)+'%':'-';
+  document.getElementById('dash-w-pct').textContent=total?(wT/total*100).toFixed(1)+'%':'-';
+  const accts=[
+    {name:'국민연금',h:appData.h.nps,w:appData.w.nps,type:'direct'},
+    {name:'퇴직연금',h:appData.h.retire,w:appData.w.retire,type:'direct'},
+    {name:'보험사연금',h:appData.h.insure,w:appData.w.insure,type:'direct'},
+    {name:'연금저축',h:getETFTotal('h-pension'),w:getETFTotal('w-pension'),type:'etf'},
+    {name:'IRP',h:getETFTotal('h-irp'),w:getETFTotal('w-irp'),type:'etf'},
+    {name:'ISA',h:getETFTotal('h-isa'),w:getETFTotal('w-isa'),type:'etf'},
+  ];
+  document.getElementById('account-grid').innerHTML=accts.flatMap(a=>[
+    '<div class="acc-card husband"><div class="acc-name">👨 '+a.name+' <span class="badge badge-'+(a.type==='etf'?'etf':'direct')+'">'+(a.type==='etf'?'ETF':'직접입력')+'</span></div><div class="acc-amount">'+won(a.h)+'</div><div class="acc-pct">'+(total?(a.h/total*100).toFixed(1)+'%':'-')+'</div></div>',
+    '<div class="acc-card wife"><div class="acc-name">👩 '+a.name+' <span class="badge badge-'+(a.type==='etf'?'etf':'direct')+'">'+(a.type==='etf'?'ETF':'직접입력')+'</span></div><div class="acc-amount">'+won(a.w)+'</div><div class="acc-pct">'+(total?(a.w/total*100).toFixed(1)+'%':'-')+'</div></div>',
+  ]).join('');
+}
+
+// ── 시뮬레이터 ──
+function simulate(p) {
+  const age=p==='h'?42:parseInt(document.getElementById('w-sim-age').value)||40;
+  const target=parseInt(document.getElementById(p+'-sim-target').value)||60;
+  const rate=parseFloat(document.getElementById(p+'-sim-rate').value)/100;
+  const years=target-age;
+  const grow=v=>v*Math.pow(1+rate,years);
+  const pension=grow(getETFTotal(p+'-pension')), irp=grow(getETFTotal(p+'-irp')), isa=grow(getETFTotal(p+'-isa'));
+  const retire=grow(appData[p].retire||0), insure=grow(appData[p].insure||0);
+  document.getElementById('sim-result-'+p).style.display='block';
+  document.getElementById(p+'-sim-total').textContent=won(pension+irp+isa+retire+insure);
+  document.getElementById(p+'-sr-pension').textContent=won(pension);
+  document.getElementById(p+'-sr-irp').textContent=won(irp);
+  document.getElementById(p+'-sr-isa').textContent=won(isa);
+  document.getElementById(p+'-sr-retire').textContent=won(retire);
+  document.getElementById(p+'-sr-insure').textContent=won(insure);
+}
+
+// ── Firebase ──
+async function connectFirebase() {
+  const key=document.getElementById('fb-key').value.trim();
+  const domain=document.getElementById('fb-domain').value.trim();
+  const project=document.getElementById('fb-project').value.trim();
+  if(!key||!domain||!project){alert('모든 항목을 입력해주세요');return;}
+  await initFirebase({apiKey:key,authDomain:domain,projectId:project});
+}
+
+async function initFirebase(cfg) {
+  try {
+    const {initializeApp}=await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
+    const {getFirestore,doc,setDoc,getDoc}=await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const app=initializeApp(cfg||{apiKey:"PLACEHOLDER",authDomain:"PLACEHOLDER",projectId:"PLACEHOLDER"});
+    db=getFirestore(app);
+    window._fs={doc,setDoc,getDoc};
+    document.getElementById('firebase-setup').style.display='none';
+    await loadData();
+  } catch(e){
+    console.warn("Firebase 연결 실패",e);
+    document.getElementById('firebase-setup').style.display='block';
+  }
+}
+
+async function loadData() {
+  if(!db) return;
+  try {
+    const snap=await window._fs.getDoc(window._fs.doc(db,'pension','family'));
+    if(snap.exists()){
+      const d=snap.data();
+      if(d.appData) appData=d.appData;
+      ['h','w'].forEach(p=>{
+        document.getElementById(p+'-nps').value=appData[p].nps||'';
+        document.getElementById(p+'-retire').value=appData[p].retire||'';
+        document.getElementById(p+'-insure').value=appData[p].insure||'';
+        ['pension','irp','isa'].forEach(acct=>{
+          const key=p+'-'+acct;
+          document.getElementById('etf-list-'+key).innerHTML='';
+          (appData[p].etf[acct]||[]).forEach(item=>addETFRow(key,item.code,item.name,item.qty));
+        });
+      });
+      // 저장된 ETF 가격 일괄 조회
+      const codes=[...new Set(['h','w'].flatMap(p=>
+        ['pension','irp','isa'].flatMap(a=>(appData[p].etf[a]||[]).map(i=>i.code))
+      ))];
+      if(codes.length){
+        await fetchPricesViaClaude(codes);
+        applyPricesToAllRows();
+      }
+      renderDashboard();
+    }
+  } catch(e){console.warn("로드 실패",e);}
+}
+
+function won(n) {
+  if(!n) return '₩0';
+  if(n>=100000000) return '₩'+(n/100000000).toFixed(1)+'억';
+  if(n>=10000) return '₩'+Math.round(n/10000)+'만';
+  return '₩'+n.toLocaleString();
+}
+
+document.getElementById('search-modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
+
+// 세션 데이터 복원 시도
+try {
+  const saved=sessionStorage.getItem('pensionData');
+  if(saved) appData=JSON.parse(saved);
+} catch(e){}
+
+renderDashboard();
+initFirebase();
+</script>
+</body>
+</html>
